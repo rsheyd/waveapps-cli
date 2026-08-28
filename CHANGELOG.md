@@ -4,6 +4,13 @@ All notable user-visible changes to this project are documented in this file. Th
 
 ## Unreleased
 
+## 0.3.0 - 2026-08-28
+
+### Added
+
+- Dry-run-by-default `invoices update` command for applying a JSON `InvoicePatchInput` to an invoice found by exact number.
+- Example invoice update with replacement items and a fixed service discount.
+
 ## 0.2.0 - 2026-08-28
 
 ### Added

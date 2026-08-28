@@ -22,6 +22,7 @@
 - `scripts/check-secrets.js`: dependency-free tracked-file secret scan.
 - `.github/workflows/`: continuous integration and secret-scan workflows.
 - `examples/invoice.json`: example invoice input.
+- `examples/invoice-update.json`: example replacement items and invoice discount patch.
 - `README.md`: installation and usage documentation.
 - `CHANGELOG.md`: user-visible release history.
 - `CONTRIBUTING.md`: contribution workflow.

@@ -1,0 +1,23 @@
+{
+  "items": [
+    {
+      "productId": "REPLACE_WITH_SERVICE_PRODUCT_ID",
+      "description": "Professional services",
+      "quantity": "3",
+      "unitPrice": "100.00"
+    },
+    {
+      "productId": "REPLACE_WITH_REIMBURSEMENT_PRODUCT_ID",
+      "description": "Expense reimbursement",
+      "quantity": "1",
+      "unitPrice": "26.00"
+    }
+  ],
+  "discounts": [
+    {
+      "name": "Preferred customer discount (20% of services)",
+      "discountType": "FIXED",
+      "amount": "60.00"
+    }
+  ]
+}

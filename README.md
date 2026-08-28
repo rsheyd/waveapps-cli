@@ -41,6 +41,7 @@ waveapps products --business BUSINESS_ID
 waveapps products create --business ID --name NAME --price PRICE --income-account ID [--description TEXT] [--submit]
 waveapps accounts --business BUSINESS_ID
 waveapps invoices create --file invoice.json [--submit]
+waveapps invoices update --business ID --invoice NUMBER --file patch.json [--submit]
 waveapps invoices set-number --business ID --invoice CURRENT --number NEW [--submit]
 waveapps help
 ```
@@ -153,11 +154,25 @@ waveapps invoices set-number --business BUSINESS_ID --invoice CURRENT_NUMBER --n
 
 Invoice numbers must be unique within Wave. The lookup checks for an exact match even though Wave's API performs a contains-style search.
 
+## Update an invoice
+
+Use a JSON patch file to update an existing invoice identified by its exact current invoice number. The file may contain fields accepted by Wave's `InvoicePatchInput`, including items, discounts, dates, memo, footer, and invoice number.
+
+Preview and submit an update:
+
+```sh
+waveapps invoices update --business BUSINESS_ID --invoice INVOICE_NUMBER --file invoice-update.json
+waveapps invoices update --business BUSINESS_ID --invoice INVOICE_NUMBER --file invoice-update.json --submit
+```
+
+See `examples/invoice-update.json` for an update that restores a standard hourly price and applies a fixed discount only to services. Providing `items` replaces all existing invoice items, so include every line that should remain. The patch file must not contain an invoice `id`; the CLI resolves it from the exact invoice number.
+
 ## Safety and limitations
 
 - `--submit` creates a real record in Wave; there is no CLI delete command.
 - Invoice creation does not email the invoice or charge the customer.
 - Customer creation supports name, email, and currency. Add addresses or other details in Wave afterward.
+- Invoice updates can replace items and discounts but do not send or approve the invoice unless the supplied patch explicitly changes supported status fields.
 - Product creation requires an income-account ID so the product is sellable and usable on an invoice.
 - Lookup commands currently return the first 100 records of each type.
 - The CLI never needs `WAVEAPPS_CLIENT_ID` or `WAVEAPPS_CLIENT_SECRET` for personal full-access-token use.

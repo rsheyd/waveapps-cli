@@ -75,3 +75,19 @@ test('invoice number update previews, then submits explicitly', async () => {
   await run([...args, '--submit'], { env: { WAVEAPPS_FULL_ACCESS_TOKEN: 'test-token' }, stdout: () => {}, clientFactory });
   assert.deepEqual(received, { id: 'invoice-id', invoiceNumber: 'NEW-1' });
 });
+
+test('invoice file update previews, then submits the resolved invoice explicitly', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'waveapps-cli-'));
+  const file = join(directory, 'patch.json');
+  await writeFile(file, JSON.stringify({ memo: 'Updated memo' }));
+  let received;
+  const clientFactory = () => ({
+    invoiceByNumber: async () => ({ id: 'invoice-id', invoiceNumber: 'INV-1', customer: { name: 'Jane Example' } }),
+    patchInvoice: async (input) => { received = input; return { invoiceNumber: 'INV-1' }; }
+  });
+  const args = ['invoices', 'update', '--business', 'b', '--invoice', 'INV-1', '--file', file];
+  await run(args, { env: { WAVEAPPS_FULL_ACCESS_TOKEN: 'test-token' }, stdout: () => {}, clientFactory });
+  assert.equal(received, undefined);
+  await run([...args, '--submit'], { env: { WAVEAPPS_FULL_ACCESS_TOKEN: 'test-token' }, stdout: () => {}, clientFactory });
+  assert.deepEqual(received, { id: 'invoice-id', memo: 'Updated memo' });
+});

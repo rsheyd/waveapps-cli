@@ -11,10 +11,11 @@ Usage:
   waveapps products create --business ID --name NAME --price PRICE --income-account ID [--description TEXT] [--submit]
   waveapps accounts --business BUSINESS_ID
   waveapps invoices create --file invoice.json [--submit]
+  waveapps invoices update --business ID --invoice NUMBER --file patch.json [--submit]
   waveapps invoices set-number --business ID --invoice CURRENT --number NEW [--submit]
   waveapps help
 
-Invoice creation is a dry run unless --submit is present.
+All create and update commands are dry runs unless --submit is present.
 Authentication: WAVEAPPS_FULL_ACCESS_TOKEN must be exported in your shell.`;
 
 export async function run(argv, options = {}) {
@@ -104,9 +105,24 @@ export async function run(argv, options = {}) {
     if (currentNumber === newNumber) throw new Error('The new invoice number must be different');
     const invoice = await client.invoiceByNumber(businessId, currentNumber);
     const preview = { id: invoice.id, customer: invoice.customer?.name, currentNumber, newNumber };
-    if (!argv.includes('--submit')) return printDryRun(preview, stdout, 'invoice number');
+    if (!argv.includes('--submit')) return printDryRun(preview, stdout, 'invoice number', 'changed');
     const updated = await client.setInvoiceNumber(invoice.id, newNumber);
     stdout(`Updated invoice ${currentNumber} to ${updated.invoiceNumber}`);
+    return;
+  }
+
+  if (command === 'invoices' && subcommand === 'update') {
+    const businessId = requiredOption(argv, '--business');
+    const currentNumber = requiredOption(argv, '--invoice');
+    const file = requiredOption(argv, '--file');
+    const patch = validateInvoicePatch(JSON.parse(await readFile(file, 'utf8')));
+    const invoice = await client.invoiceByNumber(businessId, currentNumber);
+    const input = { id: invoice.id, ...patch };
+    const preview = { customer: invoice.customer?.name, currentNumber, patch };
+    if (!argv.includes('--submit')) return printDryRun(preview, stdout, 'invoice update', 'applied');
+    const updated = await client.patchInvoice(input);
+    stdout(`Updated invoice ${updated.invoiceNumber}`);
+    if (updated.total) stdout(`Total: ${updated.total.currency.symbol}${updated.total.value}`);
     return;
   }
 
@@ -132,6 +148,19 @@ export function validateInvoice(value) {
   return value;
 }
 
+export function validateInvoicePatch(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invoice patch file must contain a JSON object');
+  if ('id' in value) throw new Error('Invoice patch must not contain id; the CLI resolves it from --invoice');
+  if (Object.keys(value).length === 0) throw new Error('Invoice patch must contain at least one field');
+  if (value.items !== undefined) {
+    if (!Array.isArray(value.items) || value.items.length === 0) throw new Error('Invoice patch items must contain at least one item');
+    value.items.forEach((item, index) => {
+      if (!item || typeof item.productId !== 'string' || !item.productId.trim()) throw new Error(`Invoice item ${index + 1} requires productId`);
+    });
+  }
+  return value;
+}
+
 function requiredOption(argv, name) {
   const index = argv.indexOf(name);
   if (index === -1 || !argv[index + 1] || argv[index + 1].startsWith('--')) throw new Error(`${name} is required`);
@@ -147,8 +176,8 @@ function compactObject(value) {
   return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined));
 }
 
-function printDryRun(input, stdout, resource) {
-  stdout(`Dry run: no ${resource} was created. Add --submit to create it.`);
+function printDryRun(input, stdout, resource, verb = 'created') {
+  stdout(`Dry run: no ${resource} was ${verb}. Add --submit to apply it.`);
   stdout(JSON.stringify(input, null, 2));
 }
 

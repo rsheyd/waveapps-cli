@@ -149,13 +149,17 @@ export class WaveClient {
   }
 
   async setInvoiceNumber(id, invoiceNumber) {
-    const data = await this.request(`mutation SetInvoiceNumber($input: InvoicePatchInput!) {
+    return this.patchInvoice({ id, invoiceNumber });
+  }
+
+  async patchInvoice(input) {
+    const data = await this.request(`mutation PatchInvoice($input: InvoicePatchInput!) {
       invoicePatch(input: $input) {
         didSucceed
         inputErrors { message code path }
-        invoice { id invoiceNumber status customer { name } }
+        invoice { id invoiceNumber status customer { name } total { value currency { symbol } } }
       }
-    }`, { input: { id, invoiceNumber } });
+    }`, { input });
     const result = data.invoicePatch;
     if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors));
     return result.invoice;
