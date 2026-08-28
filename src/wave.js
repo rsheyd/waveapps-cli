@@ -123,6 +123,43 @@ export class WaveClient {
     if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors));
     return result.invoice;
   }
+
+  async invoiceByNumber(businessId, invoiceNumber) {
+    const query = `query InvoiceByNumber($businessId: ID!, $invoiceNumber: String!, $page: Int!) {
+      business(id: $businessId) {
+        invoices(page: $page, pageSize: 100, invoiceNumber: $invoiceNumber) {
+          pageInfo { totalPages }
+          edges { node { id invoiceNumber status customer { name } } }
+        }
+      }
+    }`;
+    const matches = [];
+    let page = 1;
+    let totalPages = 1;
+    do {
+      const data = await this.request(query, { businessId, invoiceNumber, page });
+      const invoices = data.business.invoices;
+      matches.push(...invoices.edges.map(({ node }) => node).filter((invoice) => invoice.invoiceNumber === invoiceNumber));
+      totalPages = invoices.pageInfo.totalPages;
+      page += 1;
+    } while (page <= totalPages);
+    if (matches.length === 0) throw new Error(`Invoice ${invoiceNumber} was not found`);
+    if (matches.length > 1) throw new Error(`Invoice number ${invoiceNumber} matched more than one invoice`);
+    return matches[0];
+  }
+
+  async setInvoiceNumber(id, invoiceNumber) {
+    const data = await this.request(`mutation SetInvoiceNumber($input: InvoicePatchInput!) {
+      invoicePatch(input: $input) {
+        didSucceed
+        inputErrors { message code path }
+        invoice { id invoiceNumber status customer { name } }
+      }
+    }`, { input: { id, invoiceNumber } });
+    const result = data.invoicePatch;
+    if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors));
+    return result.invoice;
+  }
 }
 
 function formatErrors(errors = []) {

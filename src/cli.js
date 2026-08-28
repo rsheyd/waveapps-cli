@@ -11,6 +11,7 @@ Usage:
   waveapps products create --business ID --name NAME --price PRICE --income-account ID [--description TEXT] [--submit]
   waveapps accounts --business BUSINESS_ID
   waveapps invoices create --file invoice.json [--submit]
+  waveapps invoices set-number --business ID --invoice CURRENT --number NEW [--submit]
   waveapps help
 
 Invoice creation is a dry run unless --submit is present.
@@ -93,6 +94,19 @@ export async function run(argv, options = {}) {
     const invoice = await client.createInvoice(input);
     stdout(`Created invoice ${invoice.invoiceNumber || invoice.id} (${invoice.status})`);
     if (invoice.viewUrl) stdout(invoice.viewUrl);
+    return;
+  }
+
+  if (command === 'invoices' && subcommand === 'set-number') {
+    const businessId = requiredOption(argv, '--business');
+    const currentNumber = requiredOption(argv, '--invoice');
+    const newNumber = requiredOption(argv, '--number');
+    if (currentNumber === newNumber) throw new Error('The new invoice number must be different');
+    const invoice = await client.invoiceByNumber(businessId, currentNumber);
+    const preview = { id: invoice.id, customer: invoice.customer?.name, currentNumber, newNumber };
+    if (!argv.includes('--submit')) return printDryRun(preview, stdout, 'invoice number');
+    const updated = await client.setInvoiceNumber(invoice.id, newNumber);
+    stdout(`Updated invoice ${currentNumber} to ${updated.invoiceNumber}`);
     return;
   }
 

@@ -41,6 +41,7 @@ waveapps products --business BUSINESS_ID
 waveapps products create --business ID --name NAME --price PRICE --income-account ID [--description TEXT] [--submit]
 waveapps accounts --business BUSINESS_ID
 waveapps invoices create --file invoice.json [--submit]
+waveapps invoices set-number --business ID --invoice CURRENT --number NEW [--submit]
 waveapps help
 ```
 
@@ -139,6 +140,19 @@ waveapps invoices create --file my-invoice.json --submit
 
 Use `"status": "DRAFT"` while testing. `"SAVED"` approves/saves the invoice in Wave. This command creates an invoice but does not email it.
 
+## Invoice numbering
+
+Wave generates the next invoice number when `invoiceNumber` is omitted from the invoice JSON. To choose a unique number during creation, add a field such as `"invoiceNumber": "CLIENT-2026-001"`.
+
+To change an existing invoice number, identify it by its current exact number. Preview the change first, then submit it:
+
+```sh
+waveapps invoices set-number --business BUSINESS_ID --invoice CURRENT_NUMBER --number NEW_NUMBER
+waveapps invoices set-number --business BUSINESS_ID --invoice CURRENT_NUMBER --number NEW_NUMBER --submit
+```
+
+Invoice numbers must be unique within Wave. The lookup checks for an exact match even though Wave's API performs a contains-style search.
+
 ## Safety and limitations
 
 - `--submit` creates a real record in Wave; there is no CLI delete command.
@@ -162,6 +176,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, [CHANGELOG.
 ## API documentation
 
 - [Create invoice](https://developer.waveapps.com/hc/en-us/articles/360038817812-Mutation-Create-invoice)
+- [Patch invoice](https://developer.waveapps.com/hc/en-us/articles/11224977033364-Mutation-Patch-Invoice)
 - [Create customer](https://developer.waveapps.com/hc/en-us/articles/360032569232-Mutation-Create-customer)
 - [Create product/service](https://developer.waveapps.com/hc/en-us/articles/360033284492-Mutation-Create-product-service)
 - [Wave API reference](https://developer.waveapps.com/hc/en-us/articles/360019968212-API-Reference)

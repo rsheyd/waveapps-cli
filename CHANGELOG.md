@@ -4,6 +4,14 @@ All notable user-visible changes to this project are documented in this file. Th
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-28
+
+### Added
+
+- Custom invoice numbers during creation through the `invoiceNumber` JSON field.
+- Dry-run-by-default `invoices set-number` command for changing an existing invoice number by exact match.
+- Invoice-numbering documentation.
+
 ## 0.1.0 - 2026-08-28
 
 ### Added

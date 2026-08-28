@@ -62,3 +62,16 @@ test('product creation submits a sellable product', async () => {
   });
   assert.deepEqual(received, { businessId: 'b', name: 'Support', unitPrice: '80.00', incomeAccountId: 'a' });
 });
+
+test('invoice number update previews, then submits explicitly', async () => {
+  let received;
+  const clientFactory = () => ({
+    invoiceByNumber: async () => ({ id: 'invoice-id', invoiceNumber: 'OLD-1', customer: { name: 'Jane Example' } }),
+    setInvoiceNumber: async (id, invoiceNumber) => { received = { id, invoiceNumber }; return { id, invoiceNumber }; }
+  });
+  const args = ['invoices', 'set-number', '--business', 'b', '--invoice', 'OLD-1', '--number', 'NEW-1'];
+  await run(args, { env: { WAVEAPPS_FULL_ACCESS_TOKEN: 'test-token' }, stdout: () => {}, clientFactory });
+  assert.equal(received, undefined);
+  await run([...args, '--submit'], { env: { WAVEAPPS_FULL_ACCESS_TOKEN: 'test-token' }, stdout: () => {}, clientFactory });
+  assert.deepEqual(received, { id: 'invoice-id', invoiceNumber: 'NEW-1' });
+});
