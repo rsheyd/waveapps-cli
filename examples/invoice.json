@@ -1,0 +1,17 @@
+{
+  "businessId": "REPLACE_WITH_BUSINESS_ID",
+  "customerId": "REPLACE_WITH_CUSTOMER_ID",
+  "status": "DRAFT",
+  "invoiceDate": "2026-08-28",
+  "dueDate": "2026-09-27",
+  "title": "Invoice",
+  "memo": "Thank you for your business.",
+  "items": [
+    {
+      "productId": "REPLACE_WITH_PRODUCT_ID",
+      "description": "Consulting services",
+      "quantity": "1",
+      "unitPrice": "100.00"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "name": "waveapps-cli",
+  "version": "0.1.0",
+  "description": "A small, dependency-free CLI for creating Wave invoices",
+  "keywords": [
+    "wave",
+    "waveapps",
+    "invoice",
+    "cli",
+    "graphql"
+  ],
+  "type": "module",
+  "files": [
+    "bin/",
+    "src/",
+    "examples/",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "waveapps": "./bin/waveapps.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check bin/waveapps.js && node --check src/cli.js && node --check src/wave.js && node scripts/check-secrets.js",
+    "prepack": "npm test && npm run check"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  }
+}
