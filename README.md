@@ -157,7 +157,7 @@ npm run check
 
 The tests use mocked HTTP responses and never access Wave.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow and [SECURITY.md](SECURITY.md) for reporting security issues.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow, [CHANGELOG.md](CHANGELOG.md) for release history, and [SECURITY.md](SECURITY.md) for reporting security issues.
 
 ## API documentation
 
