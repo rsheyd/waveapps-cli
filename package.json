@@ -1,7 +1,7 @@
 {
   "name": "waveapps-cli",
-  "version": "0.3.0",
-  "description": "A small, dependency-free CLI for creating Wave invoices",
+  "version": "0.4.0",
+  "description": "A small, dependency-free CLI for managing Wave customers, products, and invoices",
   "keywords": [
     "wave",
     "waveapps",

@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { WaveClient } from './wave.js';
 
-const HELP = `waveapps - create Wave invoices from the terminal
+const HELP = `waveapps - manage Wave customers, products, invoices, and estimates from the terminal
 
 Usage:
   waveapps businesses
@@ -9,13 +9,17 @@ Usage:
   waveapps customers create --business ID --name NAME [--email EMAIL] [--currency USD] [--submit]
   waveapps products --business BUSINESS_ID
   waveapps products create --business ID --name NAME --price PRICE --income-account ID [--description TEXT] [--submit]
+  waveapps products rename --product ID --name NEW_NAME [--submit]
+  waveapps products delete --product ID [--submit]
   waveapps accounts --business BUSINESS_ID
+  waveapps estimates create --file estimate.json [--submit]
+  waveapps estimates update --business ID --estimate ID --file patch.json [--submit]
   waveapps invoices create --file invoice.json [--submit]
   waveapps invoices update --business ID --invoice NUMBER --file patch.json [--submit]
   waveapps invoices set-number --business ID --invoice CURRENT --number NEW [--submit]
   waveapps help
 
-All create and update commands are dry runs unless --submit is present.
+All mutation commands are dry runs unless --submit is present.
 Authentication: WAVEAPPS_FULL_ACCESS_TOKEN must be exported in your shell.`;
 
 export async function run(argv, options = {}) {
@@ -71,6 +75,24 @@ export async function run(argv, options = {}) {
       stdout(`Created product ${product.name}: ${product.id}`);
       return;
     }
+    if (subcommand === 'rename') {
+      const input = {
+        id: requiredOption(argv, '--product'),
+        name: requiredOption(argv, '--name')
+      };
+      if (!argv.includes('--submit')) return printDryRun(input, stdout, 'product rename', 'applied');
+      const product = await client.patchProduct(input);
+      stdout(`Renamed product to ${product.name}: ${product.id}`);
+      return;
+    }
+    if (subcommand === 'delete') {
+      const id = requiredOption(argv, '--product');
+      const preview = { id, effect: 'Archive the product in Wave' };
+      if (!argv.includes('--submit')) return printDryRun(preview, stdout, 'product archive', 'applied');
+      const product = await client.archiveProduct(id);
+      stdout(`Archived product ${product.name || id}: ${product.id || id}`);
+      return;
+    }
     const businessId = requiredOption(argv, '--business');
     const products = (await client.products(businessId)).filter((product) => product.isSold && !product.isArchived);
     printRows(products, ['id', 'name', 'unitPrice'], stdout);
@@ -81,6 +103,32 @@ export async function run(argv, options = {}) {
     const businessId = requiredOption(argv, '--business');
     const accounts = (await client.incomeAccounts(businessId)).filter((account) => !account.isArchived);
     printRows(accounts.map((account) => ({ ...account, subtype: account.subtype?.value })), ['id', 'name', 'subtype'], stdout);
+    return;
+  }
+
+  if (command === 'estimates' && subcommand === 'update') {
+    const patch = JSON.parse(await readFile(requiredOption(argv, '--file'), 'utf8'));
+    const allowed = ['title', 'subhead', 'memo', 'footer', 'dueDate', 'estimateNumber', 'poNumber'];
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !Object.keys(patch).length) throw new Error('Estimate patch must contain a JSON object with changes');
+    for (const [key, value] of Object.entries(patch)) {
+      if (!allowed.includes(key) || typeof value !== 'string') throw new Error(`Unsupported estimate patch field: ${key}`);
+    }
+    if (patch.dueDate !== undefined) validateEstimateDate(patch.dueDate);
+    const input = await client.prepareEstimateUpdate(requiredOption(argv, '--business'), requiredOption(argv, '--estimate'), patch);
+    if (!argv.includes('--submit')) return printDryRun(input, stdout, 'estimate update', 'applied');
+    const estimate = await client.updateEstimate(input);
+    stdout(`Updated estimate ${estimate.estimateNumber} (${estimate.status})`);
+    if (estimate.viewUrl) stdout(estimate.viewUrl);
+    return;
+  }
+
+  if (command === 'estimates' && subcommand === 'create') {
+    const file = requiredOption(argv, '--file');
+    const input = validateEstimate(JSON.parse(await readFile(file, 'utf8')));
+    if (!argv.includes('--submit')) return printDryRun(input, stdout, 'estimate');
+    const estimate = await client.createEstimate(input);
+    stdout(`Created estimate ${estimate.estimateNumber || estimate.id} (${estimate.status})`);
+    if (estimate.viewUrl) stdout(estimate.viewUrl);
     return;
   }
 
@@ -128,6 +176,39 @@ export async function run(argv, options = {}) {
 
   stderr(`Unknown command: ${argv.join(' ')}`);
   throw new Error('Run waveapps help for usage');
+}
+
+export function validateEstimate(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Estimate file must contain a JSON object');
+  for (const field of ['businessId', 'customerId']) {
+    if (typeof value[field] !== 'string' || !value[field].trim()) throw new Error(`Estimate requires ${field}`);
+  }
+  if (!Array.isArray(value.items) || value.items.length === 0) throw new Error('Estimate requires at least one item');
+  const decimal = /^(?:\d+(?:\.\d*)?|\.\d+)$/;
+  value.items.forEach((item, index) => {
+    if (!item || typeof item.productId !== 'string' || !item.productId.trim()) throw new Error(`Estimate item ${index + 1} requires productId`);
+    for (const field of ['quantity', 'unitPrice']) {
+      if (field === 'quantity' && item[field] === undefined) continue;
+      const amount = item[field];
+      if (!['string', 'number'].includes(typeof amount) || !decimal.test(String(amount)) || !Number.isFinite(Number(amount))) {
+        throw new Error(`Estimate item ${index + 1} has invalid ${field}`);
+      }
+    }
+  });
+  if (value.status !== undefined && value.status !== 'DRAFT') throw new Error('Estimate status must be DRAFT');
+  const estimateDate = value.estimateDate ?? new Date().toISOString().slice(0, 10);
+  validateEstimateDate(estimateDate);
+  const expires = new Date(`${estimateDate}T00:00:00Z`);
+  expires.setUTCDate(expires.getUTCDate() + 30);
+  const dueDate = value.dueDate ?? expires.toISOString().slice(0, 10);
+  validateEstimateDate(dueDate);
+  return { ...value, status: 'DRAFT', estimateDate, dueDate };
+}
+
+function validateEstimateDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value + 'T00:00:00Z')) || new Date(value + 'T00:00:00Z').toISOString().slice(0, 10) !== value) {
+    throw new Error('Estimate date must be a valid YYYY-MM-DD date');
+  }
 }
 
 export function validateInvoice(value) {

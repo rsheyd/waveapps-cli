@@ -2,7 +2,7 @@
 
 - Keep the CLI dependency-free unless a dependency materially improves the user experience.
 - Never log, persist, or include Wave access tokens in errors.
-- Customer, product, and invoice creation must remain a dry run unless the user explicitly supplies `--submit`.
+- Customer, product, invoice, and estimate creation must remain a dry run unless the user explicitly supplies `--submit`.
 - Keep Markdown paragraphs and list items on single physical lines.
 
 ## Versioning and changelog
@@ -17,11 +17,12 @@
 
 - `bin/waveapps.js`: executable entry point.
 - `src/cli.js`: argument parsing, dry-run safeguards, validation, and command output.
-- `src/wave.js`: Wave GraphQL client plus customer, product, account, and invoice operations.
+- `src/wave.js`: Wave GraphQL client plus customer, product, account, invoice, and estimate operations.
 - `test/`: local tests using mocked HTTP responses.
 - `scripts/check-secrets.js`: dependency-free tracked-file secret scan.
 - `.github/workflows/`: continuous integration and secret-scan workflows.
 - `examples/invoice.json`: example invoice input.
+- `examples/estimate.json`: example draft estimate input with capped hourly consulting terms.
 - `examples/invoice-update.json`: example replacement items and invoice discount patch.
 - `README.md`: installation and usage documentation.
 - `CHANGELOG.md`: user-visible release history.

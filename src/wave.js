@@ -106,6 +106,82 @@ export class WaveClient {
     return result.product;
   }
 
+  async patchProduct(input) {
+    const data = await this.request(`mutation PatchProduct($input: ProductPatchInput!) {
+      productPatch(input: $input) {
+        didSucceed
+        inputErrors { message code path }
+        product { id name description unitPrice isSold isBought isArchived }
+      }
+    }`, { input });
+    const result = data.productPatch;
+    if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors, 'update the product'));
+    return result.product;
+  }
+
+  async archiveProduct(id) {
+    const data = await this.request(`mutation ArchiveProduct($input: ProductArchiveInput!) {
+      productArchive(input: $input) {
+        didSucceed
+        inputErrors { message code path }
+        product { id name isArchived }
+      }
+    }`, { input: { id } });
+    const result = data.productArchive;
+    if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors, 'archive the product'));
+    return result.product;
+  }
+
+  async prepareEstimateUpdate(businessId, id, patch) {
+    const scalars = ['id', 'status', 'title', 'subhead', 'estimateNumber', 'poNumber', 'estimateDate', 'dueDate', 'exchangeRate', 'memo', 'footer', 'disableAmexPayments', 'disableCreditCardPayments', 'disableBankPayments', 'itemTitle', 'unitTitle', 'priceTitle', 'amountTitle', 'hideName', 'hideDescription', 'hideUnit', 'hidePrice', 'hideAmount', 'requireTermsOfServiceAgreement', 'depositStatus', 'depositValue', 'depositUnit', 'dontCarryOverNotesToInvoice'];
+    const data = await this.request(`query EstimateForUpdate($businessId: ID!, $id: ID!) {
+      business(id: $businessId) { estimate(id: $id, embedAttachments: true) {
+        ${scalars.join(' ')} customer { id } currency { code }
+        items { product { id name } description quantity unitPrice taxes { salesTax { id } } }
+        attachments { id }
+        discounts { __typename ... on FixedEstimateDiscount { name amount } ... on PercentageEstimateDiscount { name percentage } }
+      } }
+    }`, { businessId, id });
+    const estimate = data.business?.estimate;
+    if (!estimate) throw new Error('Estimate was not found');
+    if (estimate.status !== 'DRAFT') throw new Error('Only draft estimates can be updated');
+    const input = Object.fromEntries(scalars.map(key => [key, estimate[key]]));
+    input.customerId = estimate.customer.id;
+    input.currency = estimate.currency.code;
+    input.items = (estimate.items || []).map(item => ({ productId: item.product.id, name: item.product.name, description: item.description, quantity: item.quantity, unitPrice: item.unitPrice, taxes: item.taxes.map(tax => ({ salesTaxId: tax.salesTax.id })) }));
+    input.attachmentIds = (estimate.attachments || []).map(attachment => attachment.id);
+    input.discounts = (estimate.discounts || []).map(discount => {
+      if (discount.__typename === 'FixedEstimateDiscount') return { name: discount.name, discountType: 'FIXED', amount: discount.amount };
+      if (discount.__typename === 'PercentageEstimateDiscount') return { name: discount.name, discountType: 'PERCENTAGE', percentage: discount.percentage };
+      throw new Error('Unsupported estimate discount type');
+    });
+    return { ...input, ...patch };
+  }
+
+  async updateEstimate(input) {
+    const data = await this.request(`mutation UpdateEstimate($input: EstimatePatchInput!) {
+      estimatePatch(input: $input) {
+        didSucceed inputErrors { message code path }
+        estimate { id estimateNumber status viewUrl }
+      }
+    }`, { input });
+    if (!data.estimatePatch.didSucceed) throw new Error(formatInputErrors(data.estimatePatch.inputErrors, 'update the estimate'));
+    return data.estimatePatch.estimate;
+  }
+
+  async createEstimate(input) {
+    const data = await this.request(`mutation CreateEstimate($input: EstimateCreateInput!) {
+      estimateCreate(input: $input) {
+        didSucceed
+        inputErrors { message code path }
+        estimate { id estimateNumber status estimateDate dueDate viewUrl pdfUrl }
+      }
+    }`, { input });
+    const result = data.estimateCreate;
+    if (!result.didSucceed) throw new Error(formatInputErrors(result.inputErrors, 'create the estimate'));
+    return result.estimate;
+  }
+
   async createInvoice(input) {
     const data = await this.request(`mutation CreateInvoice($input: InvoiceCreateInput!) {
       invoiceCreate(input: $input) {
@@ -170,7 +246,7 @@ function formatErrors(errors = []) {
   return errors.map((error) => error.message || String(error)).join('; ');
 }
 
-function formatInputErrors(errors = []) {
-  if (!errors.length) return 'Wave did not create the invoice';
+function formatInputErrors(errors = [], action = 'complete the request') {
+  if (!errors.length) return `Wave did not ${action}`;
   return errors.map((error) => `${error.path?.join('.') || 'input'}: ${error.message}`).join('; ');
 }

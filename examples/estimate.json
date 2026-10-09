@@ -1,0 +1,16 @@
+{
+  "businessId": "REPLACE_WITH_BUSINESS_ID",
+  "customerId": "REPLACE_WITH_CUSTOMER_ID",
+  "status": "DRAFT",
+  "estimateNumber": "QUOTE-001",
+  "title": "Consulting Quote",
+  "memo": "Initial three-month authorization. Bill actual hours monthly; unused hours are not billed. Work beyond 65 hours requires written approval.",
+  "items": [
+    {
+      "productId": "REPLACE_WITH_PRODUCT_ID",
+      "description": "Ongoing Datadog APM consulting; up to one hour each weekday, scheduled by mutual agreement.",
+      "quantity": "65",
+      "unitPrice": "175.00"
+    }
+  ]
+}
